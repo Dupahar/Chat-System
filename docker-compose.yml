@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:latest
+    container_name: redpanda
+    command:
+      - redpanda
+      - start
+      - --smp 1
+      - --memory 1G
+      - --reserve-memory 0M
+      - --overprovisioned
+      - --node-id 0
+      - --check=false
+      - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:19092
+      - --pandaproxy-addr 0.0.0.0:28082
+      - --advertise-pandaproxy-addr localhost:28082
+    ports:
+      - 19092:9092
+      - 18081:8081
+      - 28082:28082
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+    healthcheck:
+      test: [ "CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  scylladb:
+    image: scylladb/scylla:5.2
+    container_name: scylladb
+    ports:
+      - 9042:9042
+    volumes:
+      - scylla-data:/var/lib/scylla
+    command: --smp 1 --memory 750M --overprovisioned 1 --api-address 0.0.0.0
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - 6379:6379
+    volumes:
+      - redis-data:/data
+
+  gateway:
+    build:
+      context: .
+      dockerfile: apps/gateway/Dockerfile
+    container_name: gateway
+    ports:
+      - 8080:8080
+    environment:
+      - KAFKA_BROKERS=redpanda:29092
+      - REDIS_ADDR=redis:6379
+    depends_on:
+      - redpanda
+      - redis
+
+  messaging:
+    build:
+      context: .
+      dockerfile: apps/messaging/Dockerfile
+    container_name: messaging
+    environment:
+      - KAFKA_BROKERS=redpanda:29092
+      - SCYLLA_HOSTS=scylladb
+    depends_on:
+      - redpanda
+      - scylladb
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: api
+    ports:
+      - 8081:8081
+    environment:
+      - SCYLLA_HOSTS=scylladb
+      - REDIS_ADDR=redis:6379
+    depends_on:
+      - scylladb
+      - redis
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: web
+    ports:
+      - 3000:3000
+    depends_on:
+      - api
+      - gateway
+
+volumes:
+  redpanda-data:
+  scylla-data:
+  redis-data:

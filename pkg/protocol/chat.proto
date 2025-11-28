@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package protocol;
+
+option go_package = "github.com/mahaj/networking-minor/pkg/protocol";
+
+// Message represents a chat message
+message Message {
+  string id = 1;
+  string channel_id = 2;
+  string sender_id = 3;
+  string content = 4;
+  int64 timestamp = 5;
+  string type = 6; // text, image, video
+  repeated string attachments = 7;
+}
+
+// Event represents a system event (typing, presence)
+message Event {
+  string type = 1; // typing_start, typing_stop, presence_update
+  string user_id = 2;
+  string channel_id = 3;
+  string payload = 4;
+}
+
+// GatewayService defines the internal RPC for Gateway <-> Messaging
+service GatewayService {
+  rpc PushMessage(Message) returns (Ack);
+  rpc PushEvent(Event) returns (Ack);
+}
+
+message Ack {
+  bool success = 1;
+  string error = 2;
+}

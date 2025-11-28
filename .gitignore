@@ -1,0 +1,35 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+
+# Logs
+*.log
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+.next/
+
+# Go
+go.work
+go.work.sum
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
